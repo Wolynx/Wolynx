@@ -1,0 +1,20 @@
+hak = 3
+
+                                                   #Kayıt Alanı# / #Sign In Screen#
+k_ad = str(input("Kullanıcı Adı Belirleyin :"))
+k_sif = input(("Şifre Belirleyin :"))
+                                                   #Giriş Alanı# / #Log In Screen#
+while hak >0 :
+    sys_ad = str(input("Kullanıcı Adı :"))
+    sys_sif = input("Şifre :")
+    if (sys_ad == k_ad) and (sys_sif == k_sif) :
+        print("Giriş Başarılı")
+        break
+    if (sys_ad != k_ad) or (sys_sif != k_sif) :
+        hak = hak - 1
+        print("Kullanıcı Adı veya Şifre Hatalı. Kalan Hak : {}".format(hak))
+        continue
+        
+        """
+        Yapım : Volkan Özdemir
+        """
