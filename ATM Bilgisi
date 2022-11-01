@@ -1,0 +1,53 @@
+#ATM BİLGİSİ#
+
+baslangic_para = 2000
+
+while True :
+    secim = print("""
+        Yapmak İstediğiniz İşlemi Seçin
+        
+        1- ) Para Çekme
+        2- ) Para Yatırma
+        3- ) Kart Bilgileri
+        4- ) Kart İade 
+            
+            """)
+    sec = int(input("İşlem Seçiniz (1 / 2 / 3 / 4) :"))
+
+    if sec == 1 :
+        cekilen_para = int(input("Çekmek İstediğiniz Tutar :"))
+        kalan_para = baslangic_para - cekilen_para
+        print("""
+        Çekilen Tutar = {}
+        Mevcut Para = {}
+        
+         
+        """.format(cekilen_para,kalan_para))
+        baslangic_para = baslangic_para - cekilen_para
+        if baslangic_para < 100 :
+            print("Bankaya Ait Borcunuz Bulunmakta ...")
+            print("Borç Miktarınız : {} ".format(kalan_para*-2+kalan_para))
+
+    elif sec == 2 :
+         yatirilcak_tutar = int(input("Yatırmak İstediğiniz Tutar :"))
+         baslangic_para = baslangic_para + yatirilcak_tutar
+         print("""
+            Yatırılan Tutar = {}
+            Mevcut Para = {}
+        
+        
+         """.format(yatirilcak_tutar,baslangic_para))
+
+    if sec == 3 :
+        ad = "Volkan Özdemir "
+        iban = "TR280006701000000078326706"
+        mevcut_para = baslangic_para
+        print("""
+        Kart Sahibi Adı : {}
+        IBAN  : {}
+        Mevcut Para : {}
+        """.format(ad,iban,mevcut_para))
+
+    if sec == 4 :
+        print("Kart İadeniz Yaplıyor ... ")
+        break
