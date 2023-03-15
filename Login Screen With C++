@@ -1,0 +1,54 @@
+#include <iostream>
+using namespace std;
+
+void kayit_olma()
+{
+    string kullanici_adi;
+    int sifre,sifre_teyit;
+    int sayac = 2;
+    while (sayac >= 1)
+    {
+        cout << "Kullanici Adi Olusturun : ";
+        cin >> kullanici_adi;
+        cout << endl;
+        cout << "Sifre Olusturun : ";
+        cin >> sifre;
+        cout << endl;
+        cout << "Sifrenizi Tekrar Girin : ";
+        cin >> sifre_teyit;
+        cout << endl;
+
+        if (sifre != sifre_teyit)
+        {
+            cout << "   Sifreler Eslesmiyor." << endl;
+            sayac--;
+            cout << "   Kalan Hak : " << sayac << endl;
+            if (sayac == 0)
+            {
+                cout << "///Oturumunuz Sonlanmistir.///" << endl;
+                
+            }
+        }
+        else if (sifre == sifre_teyit)
+        {
+            cout << "-------------------------------" << endl;
+            cout << "Kayit Basariyla Gerceklesti" << endl;
+            cout << "-------------------------------" << endl;
+            cout << endl;
+            cout << "       Kullanici Bilgileri" << endl;
+            cout << "Kullanici Adiniz : " << kullanici_adi << endl;
+            cout << "Sifreniz : " << sifre << endl;
+            cout << endl;
+            sayac = 0;
+           
+        }
+    
+
+    }
+
+}
+
+int main(){
+    kayit_olma();
+}
+//by Volkan
