@@ -1,51 +1,94 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DHT.h>
 
-const char* ssid = "Wifi Adi";  // WiFi adın
-const char* password = "Sifre";  // WiFi şifren
+// Wi-Fi bilgileri
+const char* ssid = "Wifi Ad";
+const char* password = "Sifre";
 
-WebServer server(80);  // HTTP sunucu için port 80
+// DHT sensör ayarları
+#define DHTPIN 13  // Sensörün bağlı olduğu pin
+#define DHTTYPE DHT11 // veya DHT22
+DHT dht(DHTPIN, DHTTYPE);
 
-void handleRoot() {
-    String html = "<html>\
-    <head>\
-    <title>ESP32 Web Sayfası</title>\
-    <meta name='viewport' content='width=device-width, initial-scale=1'>\
-    <style> body { font-family: Arial; text-align: center; } h1 { color: blue; } p { font-size: 18px; } </style>\
-    </head>\
-    <body>\
-    <h1>ESP32 Web Sunucusu</h1>\
-    <p>Merhaba! Bu sayfa <b>Volkan Ozdemir</b>'in ESP32 karti tarafindan olusturulmustur.</p>\
-    <button onclick=\"window.location.href='/hello'\">Mesaj Goster</button>\
-    </body>\
-    </html>";
+// Web sunucu nesnesi
+WebServer server(80);
 
-    server.send(200, "text/html", html);
+// Konum Bilgisi
+const char* location = "İzmir/Buca - Volkan'ın Evi"; // Konum
+const char* country = "Türkiye";
+
+// HTML Sayfası
+String readSensorData() {
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
+    
+    if (isnan(h) || isnan(t)) {
+        return "Sensör okunamadı!";
+    }
+
+    String html = "<html><head>";
+    html += "<meta charset='UTF-8'>"; // Karakter bozulmalarını önler
+    html += "<meta http-equiv='refresh' content='5'/>";
+    html += "<title>Sıcaklık ve Nem Ölçer</title>";
+    
+    // Saat Güncelleme Scripti
+    html += "<script>function updateTime() {";
+    html += "var now = new Date();";
+    html += "document.getElementById('clock').innerHTML = now.toLocaleTimeString('tr-TR');";
+    html += "} setInterval(updateTime, 1000);</script>";
+    
+    // CSS Tasarımı
+    html += "<style>";
+    html += "body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }";
+    html += ".container { margin-top: 50px; padding: 20px; background: white; display: inline-block; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }";
+    html += ".data { font-size: 20px; margin: 10px 0; }";
+    html += ".icon { font-size: 30px; margin-right: 10px; }";
+    html += "footer { position: fixed; right: 10px; bottom: 10px; font-size: 12px; color: gray; }";
+    html += "</style></head><body onload='updateTime()'>";
+
+    // Sayfa İçeriği
+    html += "<div class='container'>";
+    html += "<h1>Sıcaklık ve Nem Ölçer</h1>";
+    html += "<p class='data'><span class='icon'>🌡️</span><strong>Sıcaklık:</strong> " + String(t) + " °C</p>";
+    html += "<p class='data'><span class='icon'>💧</span><strong>Nem:</strong> " + String(h) + " %</p>";
+    html += "<p class='data'><span class='icon'>📍</span><strong>Konum:</strong> " + String(location) + "</p>";
+    html += "<p class='data'><span class='icon'>🌍</span><strong>Ülke:</strong> " + String(country) + "</p>";
+    html += "<p class='data'><span class='icon'>⏰</span><strong>Saat:</strong> <span id='clock'></span></p>";
+    html += "</div>";
+
+    html += "<footer>Bu web sayfasının tasarımı Volkan Özdemir™ 'e aittir.</footer>";
+
+    html += "</body></html>";
+    
+    return html;
 }
 
-void handleHello() {
-    server.send(200, "text/html", "<h1>Merhaba Dunya!</h1><p>Bu bir test mesajidir.</p>");
+// Ana sayfa isteği işlendiğinde çalışacak fonksiyon
+void handleRoot() {
+    server.send(200, "text/html", readSensorData());
 }
 
 void setup() {
     Serial.begin(115200);
-    WiFi.begin(ssid, password);
+    dht.begin();
 
-    Serial.print("Wi-Fi'ye bağlanılıyor");
+    // WiFi bağlantısı
+    WiFi.begin(ssid, password);
+    Serial.print("WiFi'ye bağlanılıyor");
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
     }
-
-    Serial.println("\nBağlandı!");
+    Serial.println("\nWiFi bağlandı!");
     Serial.print("ESP32 IP Adresi: ");
     Serial.println(WiFi.localIP());
 
-    server.on("/", handleRoot);  // Ana sayfayı işle
-    server.on("/hello", handleHello);  // Yeni bir mesaj sayfası ekle
+    // Web sunucusunu başlat
+    server.on("/", handleRoot);
     server.begin();
 }
 
 void loop() {
-    server.handleClient();  // HTTP isteklerini işle
+    server.handleClient(); // İstemcileri dinle
 }
