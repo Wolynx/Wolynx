@@ -1,0 +1,51 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+const char* ssid = "Wifi Adi";  // WiFi adın
+const char* password = "Sifre";  // WiFi şifren
+
+WebServer server(80);  // HTTP sunucu için port 80
+
+void handleRoot() {
+    String html = "<html>\
+    <head>\
+    <title>ESP32 Web Sayfası</title>\
+    <meta name='viewport' content='width=device-width, initial-scale=1'>\
+    <style> body { font-family: Arial; text-align: center; } h1 { color: blue; } p { font-size: 18px; } </style>\
+    </head>\
+    <body>\
+    <h1>ESP32 Web Sunucusu</h1>\
+    <p>Merhaba! Bu sayfa <b>Volkan Ozdemir</b>'in ESP32 karti tarafindan olusturulmustur.</p>\
+    <button onclick=\"window.location.href='/hello'\">Mesaj Goster</button>\
+    </body>\
+    </html>";
+
+    server.send(200, "text/html", html);
+}
+
+void handleHello() {
+    server.send(200, "text/html", "<h1>Merhaba Dunya!</h1><p>Bu bir test mesajidir.</p>");
+}
+
+void setup() {
+    Serial.begin(115200);
+    WiFi.begin(ssid, password);
+
+    Serial.print("Wi-Fi'ye bağlanılıyor");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("\nBağlandı!");
+    Serial.print("ESP32 IP Adresi: ");
+    Serial.println(WiFi.localIP());
+
+    server.on("/", handleRoot);  // Ana sayfayı işle
+    server.on("/hello", handleHello);  // Yeni bir mesaj sayfası ekle
+    server.begin();
+}
+
+void loop() {
+    server.handleClient();  // HTTP isteklerini işle
+}
