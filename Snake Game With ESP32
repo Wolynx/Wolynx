@@ -1,0 +1,209 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+#define JOY_X_PIN 34
+#define JOY_Y_PIN 35
+#define JOY_SW_PIN 32
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+bool gameStarted = false;
+bool gameOver = false;
+int score = 0;
+int highScore = 0;
+
+#define GRID_SIZE 4  // Yılan ve yem boyutu
+#define MAX_LENGTH 50
+
+struct Point {
+    int x;
+    int y;
+};
+
+Point snake[MAX_LENGTH];
+int snakeLength = 3;
+Point food;
+int dirX = 1, dirY = 0;  // Başlangıç yönü sağa doğru
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(JOY_SW_PIN, INPUT_PULLUP);
+
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println("OLED ekran başlatılamadı! Lütfen bağlantıları kontrol edin.");
+        while (1);
+    }
+
+    delay(100);
+    display.clearDisplay();
+    showStartScreen();
+}
+
+void loop() {
+    if (!gameStarted) {
+        if (digitalRead(JOY_SW_PIN) == LOW) {
+            delay(300);
+            while (digitalRead(JOY_SW_PIN) == LOW);
+            startGame();
+        }
+    } else if (gameOver) {
+        if (digitalRead(JOY_SW_PIN) == LOW) {
+            delay(300);
+            while (digitalRead(JOY_SW_PIN) == LOW);
+            startGame();
+        }
+    } else {
+        updateGame();
+        drawGame();
+        delay(150);  // Yılanın hızını belirler
+    }
+}
+
+void showStartScreen() {
+    display.clearDisplay();
+
+    // Yılan Oyunu başlığını biraz büyült
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(30, 10);  
+    display.println("Yilan Oyunu");
+
+    // "Başlamak için butona basın" ortalandı
+    display.setTextSize(1);
+    display.setCursor(26, 40);
+    display.println("Baslamak icin");
+    display.setCursor(30, 50);
+    display.println("butona basin");
+
+    display.display();
+}
+
+
+void startGame() {
+    gameStarted = true;
+    gameOver = false;
+    score = 0;
+    snakeLength = 3;
+
+    // Yılanı başlangıç konumuna getir
+    for (int i = 0; i < snakeLength; i++) {
+        snake[i] = {SCREEN_WIDTH / 2 - (i * GRID_SIZE), SCREEN_HEIGHT / 2};
+    }
+
+    spawnFood();
+    dirX = 1;
+    dirY = 0;
+    display.clearDisplay();
+    display.display();
+}
+
+void spawnFood() {
+    food.x = random(0, SCREEN_WIDTH / GRID_SIZE) * GRID_SIZE;
+    food.y = random(0, SCREEN_HEIGHT / GRID_SIZE) * GRID_SIZE;
+}
+
+void updateGame() {
+    // Joystick'ten yön alma
+    int joyX = analogRead(JOY_X_PIN);
+    int joyY = analogRead(JOY_Y_PIN);
+
+    int threshold = 1500;  // Ölü bölge (Dead zone) hassasiyet ayarı
+
+    // Sağa gitme hatasını engellemek için Joystick yön değişikliklerini daha kontrollü yapalım:
+    if (joyX < threshold && dirX == 0) {  // Sol
+        dirX = -1;
+        dirY = 0;
+    } 
+    else if (joyX > 3000 && dirX == 0) {  // Sağ
+        dirX = 1;
+        dirY = 0;
+    } 
+    else if (joyY < threshold && dirY == 0) {  // Yukarı
+        dirX = 0;
+        dirY = -1;
+    } 
+    else if (joyY > 3000 && dirY == 0) {  // Aşağı
+        dirX = 0;
+        dirY = 1;
+    }
+
+    // Yılanın konumunu güncelle
+    for (int i = snakeLength - 1; i > 0; i--) {
+        snake[i] = snake[i - 1];
+    }
+
+    snake[0].x += dirX * GRID_SIZE;
+    snake[0].y += dirY * GRID_SIZE;
+
+    // Duvara çarpma kontrolü
+    if (snake[0].x < 0 || snake[0].x >= SCREEN_WIDTH || snake[0].y < 0 || snake[0].y >= SCREEN_HEIGHT) {
+        gameOver = true;
+        showGameOverScreen();
+        return;
+    }
+
+    // Kendine çarpma kontrolü
+    for (int i = 1; i < snakeLength; i++) {
+        if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
+            gameOver = true;
+            showGameOverScreen();
+            return;
+        }
+    }
+
+    // Yem yeme kontrolü
+    if (snake[0].x == food.x && snake[0].y == food.y) {
+        if (snakeLength < MAX_LENGTH) snakeLength++;
+        score++;
+        if (score > highScore) highScore = score;
+        spawnFood();
+    }
+}
+
+void drawGame() {
+    display.clearDisplay();
+    
+    // Skor ve rekor göster
+    display.setCursor(0, 0);
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.print("Skor: ");
+    display.print(score);
+    
+    display.setCursor(80, 0);
+    display.print("Rekor: ");
+    display.print(highScore);
+
+    // Yılanı çiz
+    for (int i = 0; i < snakeLength; i++) {
+        display.fillRect(snake[i].x, snake[i].y, GRID_SIZE, GRID_SIZE, WHITE);
+    }
+
+    // Yemi çiz
+    display.fillRect(food.x, food.y, GRID_SIZE, GRID_SIZE, WHITE);
+
+    display.display();
+}
+
+void showGameOverScreen() {
+    display.clearDisplay();
+    
+    display.setTextSize(2);
+    display.setCursor(20, 10);
+    display.println("Oyun Bitti");
+    
+    display.setTextSize(1);
+    display.setCursor(20, 40);
+    display.print("Skor: ");
+    display.print(score);
+    
+    display.setCursor(15, 50);
+    display.println("Tekrar icin butona basin");
+    
+    display.display();
+}
