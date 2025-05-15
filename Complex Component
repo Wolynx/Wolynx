@@ -31,7 +31,7 @@ bool servoActive = false;
 #define BUZZER_PIN 16
 
 int menuIndex = 0;
-String menuItems[] = {"Yilan Oyunu", "Servo", "Hava Durumu", "Refleks Oyunu", "Tus Kalibrasyonu","Hesap Makinesi"};
+String menuItems[] = {"Yilan Oyunu", "Servo", "Hava Durumu", "Refleks Oyunu", "Tus Kalibrasyonu","Hesap Makinesi","Zamanlayici"};
 const int menuLength = sizeof(menuItems) / sizeof(menuItems[0]);
 int menuOffset = 0;
 
@@ -460,14 +460,123 @@ void runCalculator() {
   }
 }
 
+// --- Zamanlayıcı için değişkenler ---
+bool timerSetting = true;    // Ayarlama modunda mı?
+bool timerRunning = false;   // Sayaç çalışıyor mu?
+int timerMinutes = 0;
+int timerSeconds = 0;
+unsigned long timerStartMillis = 0;
+unsigned long timerDuration = 0;
+
+#define BUZZER_PIN 16  // Senin buzzer pinini yaz
+
+void timerSetup() {
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+}
+
+void timerLoop() {
+  if (timerSetting) {
+    // Zaman ayarlama ekranı
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(10, 15, "Zamani Ayarla:");
+
+    char timeStr[10];
+    sprintf(timeStr, "%02d:%02d", timerMinutes, timerSeconds);
+    u8g2.setCursor(40, 40);
+    u8g2.print(timeStr);
+
+    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.drawStr(10, 55, "UP/DOWN: Degistir");
+    u8g2.drawStr(10, 63, "LEFT: Baslat");
+
+    u8g2.sendBuffer();
+
+    if (digitalRead(UP_BUTTON) == LOW) {
+      timerSeconds++;
+      if (timerSeconds > 59) {
+        timerSeconds = 0;
+        timerMinutes++;
+        if (timerMinutes > 99) timerMinutes = 0;
+      }
+      delay(200);
+    } 
+    else if (digitalRead(DOWN_BUTTON) == LOW) {
+      if (timerSeconds == 0) {
+        if (timerMinutes > 0) timerMinutes--;
+        timerSeconds = 59;
+      } else {
+        timerSeconds--;
+      }
+      delay(200);
+    } 
+    else if (digitalRead(LEFT_BUTTON) == LOW) {
+      if (timerMinutes != 0 || timerSeconds != 0) {
+        timerDuration = (timerMinutes * 60UL + timerSeconds) * 1000UL;
+        timerStartMillis = millis();
+        timerSetting = false;
+        timerRunning = true;
+      }
+      delay(300);
+    }
+  } 
+  else if (timerRunning) {
+    unsigned long elapsed = millis() - timerStartMillis;
+    if (elapsed >= timerDuration) {
+      timerRunning = false;
+      // Alarm sesi
+      for (int i=0; i<5; i++) {
+        tone(BUZZER_PIN, 2000, 200);
+        delay(300);
+      }
+    } else {
+      unsigned long remaining = (timerDuration - elapsed) / 1000;
+      int remMin = remaining / 60;
+      int remSec = remaining % 60;
+
+      u8g2.clearBuffer();
+      u8g2.setFont(u8g2_font_ncenB08_tr);
+      u8g2.drawStr(10, 15, "Zamanlayici Basladi:");
+      char timeStr[10];
+      sprintf(timeStr, "%02d:%02d", remMin, remSec);
+      u8g2.setCursor(40, 40);
+      u8g2.print(timeStr);
+
+      u8g2.setFont(u8g2_font_6x10_tr);
+      u8g2.drawStr(10, 55, "LEFT: Durdur");
+      u8g2.sendBuffer();
+
+      if (digitalRead(LEFT_BUTTON) == LOW) {
+        timerRunning = false;
+        timerSetting = true;
+        delay(300);
+      }
+    }
+  } 
+  else {
+    // Timer durduğunda (alarm sonrası)
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    centerText("Zaman Doldu", 32);
+    centerText("LEFT: Tekrar Ayarla", 50);
+    u8g2.sendBuffer();
+
+    if (digitalRead(LEFT_BUTTON) == LOW) {
+      timerSetting = true;
+      timerMinutes = 0;
+      timerSeconds = 0;
+      delay(300);
+    }
+  }
+}
+
+
 
 void setup() {
   Serial.begin(115200);
   u8g2.begin();
   dht.begin();
-  myServo.attach(SERVO_PIN);
-  myServo.write(servoPos);
-  servoActive = true;
 
   pinMode(UP_BUTTON, INPUT_PULLUP);
   pinMode(DOWN_BUTTON, INPUT_PULLUP);
@@ -475,29 +584,79 @@ void setup() {
   pinMode(RIGHT_BUTTON, INPUT_PULLUP);
   pinMode(SELECT_BUTTON, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
+
+  myServo.detach();
+  servoActive = false;
+
+  randomSeed(analogRead(0));
+
+  drawMenu();
 }
+
 
 void loop() {
-  if (!inGame) {
-    drawMenu();
-    if (digitalRead(UP_BUTTON) == LOW) {
-      menuIndex = (menuIndex - 1 + menuLength) % menuLength;
-      delay(200);
-    } else if (digitalRead(DOWN_BUTTON) == LOW) {
-      menuIndex = (menuIndex + 1) % menuLength;
-      delay(200);
-    } else if (digitalRead(SELECT_BUTTON) == LOW) {
-      delay(200);
-      if (menuIndex == 0) { inGame = true; resetGame(); }
-      else if (menuIndex == 1) drawServo();
-      else if (menuIndex == 2) drawWeather();
-      else if (menuIndex == 3) runReflexGame();
-      else if (menuIndex == 4) drawButtonTest();
-      else if (menuIndex == 5) runCalculator();
-
-    }
-  } else {
+  if (inGame) {
     runSnakeGame();
+    return;
   }
-}
 
+  if (reflexGameActive) {
+    runReflexGame();
+    reflexGameActive = false;
+    drawMenu();
+    return;
+  }
+
+  // Menü navigasyonu
+  if (digitalRead(UP_BUTTON) == LOW) {
+    menuIndex = (menuIndex - 1 + menuLength) % menuLength;
+    drawMenu();
+    delay(150);
+  } else if (digitalRead(DOWN_BUTTON) == LOW) {
+    menuIndex = (menuIndex + 1) % menuLength;
+    drawMenu();
+    delay(150);
+  } else if (digitalRead(SELECT_BUTTON) == LOW) {
+    delay(150);
+    switch (menuIndex) {
+      case 0:
+        resetGame();
+        inGame = true;
+        break;
+      case 1:
+        drawServo();
+        drawMenu();
+        break;
+      case 2:
+        drawWeather();
+        drawMenu();
+        break;
+      case 3:
+        runReflexGame();
+        drawMenu();
+        break;
+      case 4:
+        drawButtonTest();
+        drawMenu();
+        break;
+      case 5:
+        runCalculator();
+        drawMenu();
+        break;
+      case 6:
+        timerSetup();
+        while (true) {
+          timerLoop();
+          if (digitalRead(LEFT_BUTTON) == LOW && digitalRead(RIGHT_BUTTON) == LOW) {
+            delay(300);
+            break; // Menüye dön
+          }
+          delay(50);
+        }
+        drawMenu();
+        break;
+    }
+  }
+
+  delay(50);
+}
