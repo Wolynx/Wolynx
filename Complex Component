@@ -1,9 +1,3 @@
-//İçerik: V1
-// Yılan Oyunu , Servo Motor Kontrolü, Hava Durumu
-//İçerik: V2
-// Yılan Oyunu , Servo Motor Kontrolü, Hava Durumu, Refleks Testi, Tuş Kalibrasyonu, Hesap Makinesi
-//İçerik: V3
-// Yılan Oyunu , Servo Motor Kontrolü, Hava Durumu, Refleks Testi, Tuş Kalibrasyonu, Hesap Makinesi, Notlarım, 
 //Kodlar olabildiğince optimize edilmiştir. Daha kısa kod önerileriniz için her zaman açığım. Eklenmesi uygun olan her türlü fikirlerinizi belirtmenizi isterim.
 
 #include <Arduino.h>
